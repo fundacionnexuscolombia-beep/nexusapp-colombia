@@ -1,0 +1,443 @@
+import React, { useState, useEffect } from 'react';
+import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate, Outlet } from 'react-router-dom';
+import Home from './screens/Home';
+import CalendarView from './screens/CalendarView';
+import Profile from './screens/Profile';
+import TutorChat from './screens/TutorChat';
+import Courses from './screens/Courses';
+import AdminDashboard from './screens/AdminDashboard';
+import AdminReports from './screens/AdminReports';
+import Onboarding from './screens/Onboarding';
+import Notifications from './screens/Notifications';
+import Community from './screens/Community';
+import TopicDetail from './screens/TopicDetail';
+import QuizView from './screens/QuizView';
+import Finance from './screens/Finance';
+import News from './screens/News';
+import StudentRegistration from './screens/StudentRegistration';
+import Login from './screens/Login';
+import Register from './screens/Register';
+import ResetPassword from './screens/ResetPassword';
+import AgendaDetail from './screens/AgendaDetail';
+import AchievementsAlbum from './screens/AchievementsAlbum';
+import AdminAudit from './screens/AdminAudit';
+import ScheduleView from './screens/ScheduleView';
+import { AuthProvider, useAuth } from './components/AuthProvider';
+import { supabase } from './services/supabaseClient';
+import { auditService } from './services/auditService';
+import { notificationService } from './services/notificationService';
+
+// Init global error & network interception for audit trail
+auditService.init();
+
+declare global {
+  interface Window {
+    hideInitialLoader?: () => void;
+  }
+}
+
+const Sidebar = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { role, user, signOut, isStrictlyOverdue } = useAuth();
+
+  const menuItems = role === 'admin' ? [
+    { id: 'dashboard', path: '/admin', hash: '', icon: 'dashboard', label: 'Dashboard' },
+    { id: 'cronograma', path: '/admin', hash: '#cronograma', icon: 'event', label: 'Cronograma' },
+    { id: 'materias', path: '/admin', hash: '#materias', icon: 'auto_stories', label: 'Materias' },
+    { id: 'comunidad', path: '/community', hash: '', icon: 'forum', label: 'Comunidad' },
+    { id: 'tutor', path: '/tutor', hash: '', icon: 'bolt', label: 'Tutor IA' },
+    { id: 'pagos', path: '/admin', hash: '#pagos', icon: 'payments', label: 'Pagos' },
+    { id: 'perfil', path: '/profile', hash: '', icon: 'person', label: 'Perfil' },
+  ] : [
+    { id: 'dashboard', path: '/', hash: '', icon: 'dashboard', label: 'Dashboard' },
+    { id: 'cronograma', path: '/academic-schedule', hash: '', icon: 'event', label: 'Cronograma' },
+    { id: 'materias', path: '/courses', hash: '', icon: 'auto_stories', label: 'Materias' },
+    { id: 'comunidad', path: '/community', hash: '', icon: 'forum', label: 'Comunidad' },
+    { id: 'tutor', path: '/tutor', hash: '', icon: 'bolt', label: 'Tutor IA' },
+    { id: 'pagos', path: '/finance', hash: '', icon: 'payments', label: 'Pagos' },
+    { id: 'perfil', path: '/profile', hash: '', icon: 'person', label: 'Perfil' },
+  ];
+
+  const filteredMenuItems = (isStrictlyOverdue && role !== 'admin')
+    ? menuItems.filter(item => item.id === 'perfil' || item.id === 'pagos')
+    : menuItems;
+
+  return (
+    <div className="hidden lg:flex flex-col w-64 h-screen sticky top-0 bg-white dark:bg-surface-dark border-r border-gray-100 dark:border-white/5 p-6 z-[100] shadow-sm animate-in fade-in slide-in-from-left-4 duration-500">
+      <div className="flex items-center gap-3 mb-10 px-2 group cursor-pointer" onClick={() => navigate('/')}>
+        <div className="size-10 bg-primary rounded-xl flex items-center justify-center text-white transition-transform group-hover:scale-110 group-hover:rotate-6">
+          <span className="material-symbols-outlined text-2xl font-bold">rocket_launch</span>
+        </div>
+        <h1 className="text-xl font-black dark:text-white tracking-tighter transition-colors group-hover:text-primary">Nexus App</h1>
+      </div>
+
+      <nav className="flex-1 space-y-1.5">
+        {filteredMenuItems.map((item) => {
+          const isActive = role === 'admin'
+            ? (item.path === '/admin'
+                ? (location.pathname.startsWith('/admin') && location.hash === item.hash)
+                : (location.pathname === item.path))
+            : (location.pathname === item.path);
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (item.hash && location.pathname === item.path) {
+                  const element = document.getElementById(item.hash.replace('#', ''));
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                  navigate(`${item.path}${item.hash}`, { replace: true });
+                } else {
+                  navigate(item.hash ? `${item.path}${item.hash}` : item.path);
+                }
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 group ${isActive
+                ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]'
+                : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-primary hover:translate-x-1'}`}
+            >
+              <span className={`material-symbols-outlined transition-transform duration-300 ${isActive ? 'fill-1' : 'group-hover:scale-110'}`}>{item.icon}</span>
+              <span className="font-bold text-sm tracking-wide">{item.label}</span>
+              {isActive && (
+                <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full shadow-sm animate-pulse" />
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div id="tour-profile-menu" className="pt-6 border-t border-gray-100 dark:border-white/5 space-y-4">
+        <div className="flex items-center gap-3 px-2 group cursor-pointer" onClick={() => navigate('/profile')}>
+          <div className="relative">
+            <div className="size-10 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center transition-transform group-hover:scale-110">
+              <img
+                src={user?.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'nexus'}`}
+                className="w-full h-full object-cover"
+                alt="User"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    const initials = document.createElement('span');
+                    initials.className = 'text-primary font-black text-xs uppercase';
+                    initials.innerText = user?.user_metadata?.full_name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || 'NX';
+                    parent.appendChild(initials);
+                  }
+                }}
+              />
+            </div>
+            <div className="absolute -bottom-1 -right-1 size-3 bg-nexus-green rounded-full border-2 border-white dark:border-surface-dark" />
+          </div>
+          <div className="flex-1 min-w-0 transition-transform group-hover:translate-x-0.5">
+            <p className="text-sm font-black dark:text-white truncate uppercase tracking-tight">{user?.user_metadata?.full_name?.split(' ')[0] || 'Estudiante'}</p>
+            <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">{role || 'Usuario Nexus'}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => signOut().then(() => navigate('/login'))}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-nexus-red hover:bg-nexus-red/5 transition-all group"
+        >
+          <span className="material-symbols-outlined group-hover:scale-110 transition-transform">logout</span>
+          <span className="font-bold text-sm tracking-wide">Cerrar Sesión</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const FloatingDock = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { role, isStrictlyOverdue } = useAuth();
+
+  const tabs = role === 'admin' ? [
+    { id: 'inicio', path: '/admin', hash: '', icon: 'home', label: 'Inicio' },
+    { id: 'cronograma', path: '/admin', hash: '#cronograma', icon: 'event', label: 'Agenda' },
+    { id: 'cursos', path: '/admin', hash: '#materias', icon: 'auto_stories', label: 'Materias' },
+    { id: 'tutor', path: '/tutor', hash: '', icon: 'bolt', label: 'Tutor IA' },
+    { id: 'perfil', path: '/profile', hash: '', icon: 'person', label: 'Perfil' },
+  ] : [
+    { id: 'inicio', path: '/', hash: '', icon: 'home', label: 'Inicio' },
+    { id: 'cronograma', path: '/academic-schedule', hash: '', icon: 'event', label: 'Agenda' },
+    { id: 'cursos', path: '/courses', hash: '', icon: 'auto_stories', label: 'Materias' },
+    { id: 'tutor', path: '/tutor', hash: '', icon: 'bolt', label: 'Tutor IA' },
+    { id: 'perfil', path: '/profile', hash: '', icon: 'person', label: 'Perfil' },
+  ];
+
+  const filteredTabs = (isStrictlyOverdue && role !== 'admin')
+    ? tabs.filter(tab => tab.id === 'perfil')
+    : tabs;
+
+  const hideOn = ['/onboarding', '/quiz', '/register-student', '/login', '/register', '/reset-password'];
+  if (hideOn.includes(location.pathname) || location.pathname.startsWith('/community/topic/')) return null;
+
+  return (
+    <div className="lg:hidden fixed bottom-6 left-0 right-0 flex justify-center z-[100] px-4">
+      <div className="floating-dock w-full max-w-[420px] mx-auto">
+        {filteredTabs.map((tab) => {
+          const isActive = role === 'admin'
+            ? (tab.path === '/admin'
+                ? (location.pathname.startsWith('/admin') && location.hash === tab.hash)
+                : (location.pathname === tab.path))
+            : (location.pathname === tab.path);
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                if (tab.hash && location.pathname === tab.path) {
+                  const element = document.getElementById(tab.hash.replace('#', ''));
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                  navigate(`${tab.path}${tab.hash}`, { replace: true });
+                } else {
+                  navigate(tab.hash ? `${tab.path}${tab.hash}` : tab.path);
+                }
+              }}
+              className={`relative flex flex-col items-center justify-center transition-all duration-300 ${isActive ? 'active' : 'opacity-40'}`}
+            >
+              <span className={`material-symbols-outlined text-[24px] ${isActive ? 'fill-1' : ''}`}>
+                {tab.icon}
+              </span>
+              <span className={`text-[8px] font-black uppercase tracking-tighter leading-none mt-1 ${isActive ? 'text-white' : 'text-white/40'}`}>
+                {tab.label}
+              </span>
+              {isActive && <div className="indicator animate-in fade-in zoom-in duration-300" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const ProtectedRoute = () => {
+  const { user, loading, isBlocked, isStrictlyOverdue, status, signOut, role } = useAuth();
+  const location = useLocation();
+  const [isOnboarded] = useState<boolean>(() => {
+    return localStorage.getItem('nexus_onboarded') === 'true';
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isOnboarded) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (isBlocked) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-slate-900 text-white text-center space-y-6">
+        <div className="bg-red-500/20 p-6 rounded-3xl border border-red-500/50 animate-pulse">
+          <span className="material-symbols-outlined text-5xl text-red-500 mb-4">block</span>
+          <h1 className="text-2xl font-bold mb-2">Acceso Restringido</h1>
+          <p className="text-slate-300 max-w-md mx-auto">
+            Tu cuenta ha sido suspendida temporalmente por administración.
+          </p>
+        </div>
+        <button onClick={() => window.location.reload()} className="text-sm text-nexus-blue hover:underline">
+          Recargar
+        </button>
+      </div>
+    );
+  }
+
+  if (status === 'inactive') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-slate-900 text-white text-center space-y-6">
+        <div className="bg-slate-800 p-8 rounded-[2.5rem] border border-white/5 shadow-2xl animate-in zoom-in duration-500">
+          <div className="size-20 mx-auto bg-nexus-blue/20 text-nexus-blue rounded-3xl flex items-center justify-center mb-6">
+            <span className="material-symbols-outlined text-4xl">pause_circle</span>
+          </div>
+          <h1 className="text-2xl font-black mb-3 text-white">Cuenta Inactiva</h1>
+          <p className="text-gray-400 max-w-sm mx-auto text-sm leading-relaxed mb-8">
+            Tu proceso académico se encuentra pausado. Tu historial de notas y pagos está a salvo.
+            Para retomar tus estudios, por favor contacta a administración.
+          </p>
+          <button onClick={() => window.open('https://api.whatsapp.com/send/?phone=573192521677', '_blank')} className="w-full bg-nexus-blue text-white py-4 rounded-xl font-bold tracking-widest uppercase text-xs hover:scale-[1.02] transition-transform">
+            Contactar Soporte
+          </button>
+        </div>
+        <button onClick={() => signOut().then(() => window.location.reload())} className="text-xs font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-widest">
+          Cerrar Sesión
+        </button>
+      </div>
+    );
+  }
+
+  if (isStrictlyOverdue && role !== 'admin' && location.pathname !== '/profile' && location.pathname !== '/finance') {
+    return <Navigate to="/profile" replace />;
+  }
+
+  if (role === 'admin' && location.pathname === '/') {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return (
+    <div className="flex flex-col lg:flex-row min-h-screen">
+
+      <Sidebar />
+      <div className="flex-1 flex flex-col min-w-0">
+        <Outlet />
+        <FloatingDock />
+      </div>
+    </div>
+  );
+};
+
+const AppContent: React.FC = () => {
+  const navigate = useNavigate();
+  const { loading: authLoading } = useAuth();
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('nexus_theme');
+    return saved ? saved === 'dark' : true; // Default to dark as per branding
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('nexus_theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    // Hide the initial HTML loader once React has mounted and the first internal state is ready
+    if (!authLoading && window.hideInitialLoader) {
+      window.hideInitialLoader();
+    }
+  }, [authLoading]);
+
+  // Init Push Notifications
+  useEffect(() => {
+    if (!authLoading) {
+      notificationService.initPush();
+      notificationService.checkCriticalAlerts();
+    }
+  }, [authLoading]);
+
+  const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+  const handleOnboardingComplete = () => {
+    localStorage.setItem('nexus_onboarded', 'true');
+    // Use navigate for a smoother, SPA-friendly transition
+    navigate('/', { replace: true });
+  };
+
+  // Background lighting logic is now handled in CSS for better performance
+
+  // Handle auth state changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, _session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        navigate('/reset-password');
+      }
+      if (event === 'SIGNED_OUT') {
+        navigate('/login', { replace: true });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  return (
+    <div
+      className="min-h-screen bg-background-light dark:bg-transparent bg-pattern w-full md:max-w-3xl lg:max-w-none mx-auto shadow-2xl relative flex flex-col lg:flex-row overflow-x-hidden transition-all duration-500 text-slate-900 dark:text-white"
+    >
+      {isDarkMode && (
+        <div className="aurora-container">
+          <div className="aurora-blob aurora-1" />
+          <div className="aurora-blob aurora-2" />
+        </div>
+      )}
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
+        <Route path="/onboarding" element={
+          <Onboarding onComplete={handleOnboardingComplete} />
+        } />
+
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<Home toggleTheme={toggleTheme} isDarkMode={isDarkMode} />} />
+          <Route path="/academic-schedule" element={<ScheduleView />} />
+          <Route path="/calendar" element={<CalendarView />} />
+          <Route path="/profile" element={<Profile toggleTheme={toggleTheme} isDarkMode={isDarkMode} />} />
+          <Route path="/tutor" element={<TutorChat />} />
+          <Route path="/courses" element={<Courses />} />
+          <Route path="/agenda" element={<AgendaDetail />} />
+          <Route path="/achievements" element={<AchievementsAlbum />} />
+          <Route path="/community" element={<Community />} />
+          <Route path="/community/topic/:topicId" element={<TopicDetail />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/reports" element={<AdminReports />} />
+          <Route path="/admin/audit" element={<AdminAudit />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/quiz" element={<QuizView />} />
+          <Route path="/finance" element={<Finance />} />
+          <Route path="/news" element={<News />} />
+          <Route path="/register-student" element={<StudentRegistration />} />
+        </Route>
+      </Routes>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const isConfigured = supabaseUrl && supabaseUrl !== 'YOUR_SUPABASE_URL';
+
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-slate-900 text-white text-center space-y-6">
+        <div className="bg-red-500/20 p-6 rounded-3xl border border-red-500/50">
+          <span className="material-symbols-outlined text-5xl text-red-500 mb-4">warning</span>
+          <h1 className="text-2xl font-bold mb-2">Configuración Necesaria</h1>
+          <p className="text-slate-300 max-w-md mx-auto">
+            La aplicación necesita conectarse a Supabase para funcionar.
+          </p>
+        </div>
+
+        <div className="text-left space-y-4 bg-black/30 p-6 rounded-2xl max-w-lg w-full border border-white/10">
+          <p className="font-bold flex items-center gap-2">
+            <span className="bg-blue-500 text-xs px-2 py-1 rounded">PASO 1</span>
+            Edita el archivo <code className="bg-slate-800 px-2 py-1 rounded">.env.local</code>
+          </p>
+          <p className="font-bold flex items-center gap-2">
+            <span className="bg-blue-500 text-xs px-2 py-1 rounded">PASO 2</span>
+            Reemplaza las variables con tus credenciales:
+          </p>
+          <pre className="bg-slate-950 p-4 rounded-xl text-xs overflow-x-auto border border-white/5 text-slate-400">
+            VITE_SUPABASE_URL=https://tu-proyecto.supabase.co{'\n'}
+            VITE_SUPABASE_ANON_KEY=tu-clave-anonima
+          </pre>
+          <p className="text-xs text-slate-500 italic mt-4">
+            Reinicia el servidor (npm run dev) si los cambios no se reflejan automáticamente.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <AuthProvider>
+      <HashRouter>
+        <AppContent />
+      </HashRouter>
+    </AuthProvider>
+  );
+};
+
+export default App;

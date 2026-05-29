@@ -1,0 +1,33 @@
+{
+  "docId": "1044531274",
+  "profile": {
+    "id": "3054d8f5-d7b1-4fa2-b256-a39f14e2c136",
+    "updated_at": "2026-03-28T00:22:37.803+00:00",
+    "username": null,
+    "full_name": "FRANCO QUITIAN ALEJANDRO",
+    "avatar_url": "https://ui-avatars.com/api/?name=ALEJANDRO FRANCO QUITIAN&background=random",
+    "website": null,
+    "role": "student",
+    "terms_accepted": false,
+    "terms_accepted_at": null,
+    "daily_messages_count": 0,
+    "last_message_date": null,
+    "cohort": "Marzo",
+    "phone": "3235599245",
+    "birth_date": "2010-07-13",
+    "document_type": "T.I.",
+    "document_number": "1044531274",
+    "document_issue_date": "2017-12-01",
+    "document_issue_place": "SANTUARIO",
+    "email": "alejandroalejand29@gmail.com",
+    "is_blocked": false,
+    "access_enabled": true,
+    "tour_completed": false,
+    "status": "active"
+  },
+  "auth": {
+    "id": "3054d8f5-d7b1-4fa2-b256-a39f14e2c136",
+    "email": "alejandroalejan29@gmail.com",
+    "confirmed": true
+  }
+}

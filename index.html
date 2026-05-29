@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            var display = document.getElementById('error-display');
+            var message = document.getElementById('error-message');
+            var loader = document.getElementById('loading-spinner');
+            var loadText = document.getElementById('loading-text');
+            if (display && message) {
+                display.style.display = 'block';
+                message.innerText = msg + '\nEn: ' + url + ':' + line + ':' + col + (error ? '\n' + error.stack : '');
+                if (loader) loader.style.display = 'none';
+                if (loadText) loadText.style.display = 'none';
+            }
+            return false;
+        };
+        window.onunhandledrejection = function(event) {
+            window.onerror('Rechazo de Promesa: ' + (event.reason ? event.reason.message || event.reason : 'Desconocido'), '', 0, 0, event.reason);
+        };
+        window.hideInitialLoader = function() {
+            var root = document.getElementById('root');
+            var loader = document.getElementById('initial-loader-overlay');
+            if (loader) {
+                loader.style.opacity = '0';
+                loader.style.pointerEvents = 'none';
+                setTimeout(function() {
+                    loader.style.display = 'none';
+                    loader.style.zIndex = '-1';
+                    if (loader.parentNode) loader.parentNode.removeChild(loader);
+                }, 500);
+            }
+        };
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusApp - Plataforma Educativa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <style>
+        :root {
+            --primary: #7f13ec;
+            --nexus-pink: #e61b72;
+            --nexus-purple: #8a2482;
+            --nexus-blue: #3b76bb;
+            --nexus-green: #7db928;
+            --nexus-orange: #f48221;
+            --nexus-red: #ee2a24;
+        }
+
+        /* Clases de compatibilidad para el tema de Nexus */
+        .bg-primary { background-color: #7f13ec !important; }
+        .text-primary { color: #7f13ec !important; }
+        .bg-nexus-purple { background-color: #8a2482 !important; }
+        .bg-nexus-pink { background-color: #e61b72 !important; }
+        .border-primary { border-color: #7f13ec !important; }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+            line-height: 1;
+            width: 1em;
+            height: 1em;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .fill-1 {
+            font-variation-settings: 'FILL' 1;
+        }
+
+        ::-webkit-scrollbar {
+            width: 0;
+            background: transparent;
+        }
+
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .bg-pattern {
+            background-color: #f8fafc;
+            background-image: 
+                radial-gradient(circle at 2px 2px, rgba(59, 118, 187, 0.15) 1px, transparent 0),
+                radial-gradient(circle at 50% 0%, rgba(127, 19, 236, 0.03), transparent 50%);
+            background-size: 24px 24px, 100% 100%;
+            background-attachment: fixed;
+        }
+
+        .dark .bg-pattern {
+            background-color: #0f172a;
+            background-image:
+                radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.15) 1px, transparent 0),
+                radial-gradient(circle at 15% 50%, rgba(127, 19, 236, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(59, 118, 187, 0.15), transparent 25%);
+            background-size: 24px 24px, 100% 100%, 100% 100%;
+            background-attachment: fixed;
+        }
+    </style>
+</head>
+
+<body
+    class="font-sans transition-colors duration-300">
+    <div id="root"></div>
+    <div id="initial-loader-overlay" style="position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0d121b; transition: opacity 0.5s ease;">
+        <div id="loading-spinner" style="border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #7f13ec; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+        <div style="color: white; font-family: sans-serif; font-weight: bold; font-size: 1.2rem; margin-bottom: 10px;">Nexus App</div>
+        <div id="loading-text" style="color: rgba(255,255,255,0.6); font-family: sans-serif; font-size: 0.9rem;">Inicializando sistema...</div>
+        <div id="error-display" style="display: none; margin-top: 20px; padding: 15px; background: rgba(220, 38, 38, 0.2); border: 1px solid #dc2626; border-radius: 12px; max-width: 90%; word-break: break-all;">
+            <p style="color: #ef4444; font-weight: bold; font-family: sans-serif; margin-bottom: 8px;">Error al Iniciar</p>
+            <code id="error-message" style="color: white; font-family: monospace; font-size: 0.8rem; display: block;"></code>
+            <button onclick="window.location.reload()" style="margin-top: 15px; padding: 8px 16px; background: #7f13ec; color: white; border: none; border-radius: 8px; font-weight: bold;">Reintentar</button>
+        </div>
+    </div>
+    <style>
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+    <script type="module" src="./index.tsx"></script>
+    <script>
+        // Timeout de seguridad: Si en 12 segundos no ha quitado el loader, avisar
+        setTimeout(function() {
+            if (document.getElementById('loading-spinner') && document.getElementById('loading-spinner').style.display !== 'none') {
+                window.onerror('La aplicación está tardando demasiado en cargar o se ha bloqueado. Revisa tu conexión o intenta reiniciar la app.', 'StartupTimeout', 0, 0);
+            }
+        }, 12000);
+    </script>
+</body>
+
+</html>

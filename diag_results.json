@@ -1,0 +1,35 @@
+{
+  "docId": "1029649609",
+  "steps": [],
+  "profile": {
+    "id": "206cdf57-76f7-4c60-9ac4-1e6d545f72d6",
+    "updated_at": "2026-03-27T22:49:51.767+00:00",
+    "username": null,
+    "full_name": "GUTIERREZ TORRES LAURA MANUELA",
+    "avatar_url": "https://ui-avatars.com/api/?name=LAURA MANUELA GUTIERREZ TORRES&background=random",
+    "website": null,
+    "role": "student",
+    "terms_accepted": true,
+    "terms_accepted_at": "2026-03-27T23:46:31.095+00:00",
+    "daily_messages_count": 0,
+    "last_message_date": null,
+    "cohort": "Marzo",
+    "phone": "3143557956",
+    "birth_date": "2008-08-12",
+    "document_type": "T.I.",
+    "document_number": "1029649609",
+    "document_issue_date": "2015-12-15",
+    "document_issue_place": "SABANALARGA",
+    "email": "laugt0880@gmail.com",
+    "is_blocked": false,
+    "access_enabled": true,
+    "tour_completed": true,
+    "status": "active"
+  },
+  "auth": {
+    "id": "206cdf57-76f7-4c60-9ac4-1e6d545f72d6",
+    "email": "laugt0880@gmail.com",
+    "email_confirmed": true,
+    "last_sign_in": "2026-03-27T23:46:22.321126Z"
+  }
+}

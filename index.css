@@ -1,0 +1,289 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #7f13ec;
+  --color-nexus-pink: #e61b72;
+  --color-nexus-purple: #8a2482;
+  --color-nexus-blue: #3b76bb;
+  --color-nexus-green: #7db928;
+  --color-nexus-orange: #f48221;
+  --color-nexus-red: #ee2a24;
+  
+  --font-family-sans: "Lexend", sans-serif;
+  
+  --color-background-light: #f8fafc;
+  --color-background-dark: #0f172a;
+  --color-surface-light: #ffffff;
+  --color-surface-dark: #1e293b;
+  
+  --nexus-aurora-blue: rgba(59, 118, 187, 0.15);
+  --nexus-aurora-purple: rgba(138, 36, 130, 0.15);
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+/* Mobile-Ultra Optimization */
+
+:root {
+    --touch-safe-area: 16px;
+    --nexus-premium-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+    --surface-glass: rgba(255, 255, 255, 0.7);
+    --surface-glass-dark: rgba(13, 18, 27, 0.8);
+}
+
+body {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    background-color: #f8fafc;
+    color: #0f172a; /* Explicit color for light theme */
+}
+
+.dark body, html.dark body {
+    background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0d121b 100%);
+    color: white;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Glassmorphism */
+.glass-panel {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    background: var(--surface-glass);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass-panel {
+    background: var(--surface-glass-dark);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Premium Cards */
+.premium-card {
+    box-shadow: var(--nexus-premium-shadow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-card:active {
+    scale: 0.98;
+}
+
+/* Selection for content */
+.selectable-text {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+}
+
+/* Native-like button feel */
+button,
+[role="button"],
+.tappable {
+    touch-action: manipulation;
+    transition: transform 0.1s ease, opacity 0.1s ease;
+    cursor: pointer;
+}
+
+button:active,
+[role="button"]:active,
+.tappable:active {
+    transform: scale(0.96);
+    opacity: 0.8;
+}
+
+/* Floating Navigation Dock */
+.floating-dock {
+    height: 72px;
+    border-radius: 24px;
+    background: rgba(15, 23, 42, 0.85); /* Slate dark glass */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.floating-dock button {
+    color: rgba(255, 255, 255, 0.45);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 1 1 0%;
+    min-width: 0;
+    height: 100%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 16px;
+    position: relative;
+}
+
+.floating-dock button span:first-child {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+}
+
+.floating-dock button:active span:first-child {
+    transform: scale(0.85);
+}
+
+.floating-dock button span:last-child {
+    width: 100%;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 2px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+.floating-dock button.active {
+    color: #ffffff;
+}
+
+.floating-dock button.active span:first-child {
+    color: #a855f7; /* Purple glow */
+    transform: translateY(-2px) scale(1.1);
+    filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.6));
+}
+
+.floating-dock .indicator {
+    position: absolute;
+    bottom: 6px;
+    width: 12px;
+    height: 3px;
+    background: linear-gradient(90deg, #a855f7, #ec4899);
+    border-radius: 9999px;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.8);
+}
+
+/* Segmented Progress Ring */
+.progress-ring-segmented {
+    stroke-dasharray: 4 2;
+    /* Crea el efecto de segmentos */
+}
+
+/* Fast Load / Smooth Transitions */
+.animate-fade-in {
+    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Hide Scrollbar */
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Premium Highlight Animation - More Visible */
+@keyframes pulse-nexus {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+    }
+
+    50% {
+        transform: scale(1.03);
+        box-shadow: 0 0 25px 10px rgba(37, 99, 235, 0.3);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+    }
+}
+
+@keyframes pulse-nexus-dark {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2);
+    }
+
+    50% {
+        transform: scale(1.03);
+        box-shadow: 0 0 25px 10px rgba(255, 255, 255, 0.15);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    }
+}
+
+.animate-pulse-premium {
+    animation: pulse-nexus 2.5s infinite ease-in-out;
+}
+
+.dark .animate-pulse-premium {
+    animation: pulse-nexus-dark 2.5s infinite ease-in-out;
+}
+/* Aurora Backdrop Layers */
+.aurora-container {
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    overflow: hidden;
+    pointer-events: none;
+    background: #0d121b;
+}
+
+.aurora-blob {
+    position: absolute;
+    width: 800px;
+    height: 800px;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.4;
+    mix-blend-mode: screen;
+}
+
+.aurora-1 {
+    top: -200px;
+    left: -200px;
+    background: var(--nexus-aurora-blue);
+    animation: aurora-float 25s infinite alternate ease-in-out;
+}
+
+.aurora-2 {
+    bottom: -200px;
+    right: -200px;
+    background: var(--nexus-aurora-purple);
+    animation: aurora-float 30s infinite alternate-reverse ease-in-out;
+}
+
+@keyframes aurora-float {
+    0% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+    33% {
+        transform: translate(50px, 100px) scale(1.1) rotate(10deg);
+    }
+    66% {
+        transform: translate(-30px, 50px) scale(0.9) rotate(-10deg);
+    }
+    100% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+}

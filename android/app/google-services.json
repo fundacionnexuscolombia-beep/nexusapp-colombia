@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "963601058433",
+    "project_id": "nexus-app-5d364",
+    "storage_bucket": "nexusapp-academic.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963601058433:android:c9b024cb05fef197445b80",
+        "android_client_info": {
+          "package_name": "com.fundacionnexus.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "k9ApFKC83FpeUabnufvm9Sl4QblFXsgEJ4KD9YYl"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
