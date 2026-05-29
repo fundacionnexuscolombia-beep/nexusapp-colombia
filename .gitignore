@@ -25,3 +25,11 @@ dist-ssr
 .env
 .env.local
 .env.*
+# Scripts de diagnóstico
+debug-users.js
+delete_student.mjs
+find_unknown_student.mjs
+
+# Scripts temporales
+fix_*.mjs
+repair_*.mjs
