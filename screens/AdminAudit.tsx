@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auditService, AuditLog, HealthCheck } from '../services/auditService';
+import { supabase } from '../services/supabaseClient';
 
 const levelConfig = {
   error: { color: 'text-nexus-red', bg: 'bg-red-50 dark:bg-red-900/10', border: 'border-red-200 dark:border-red-900/30', icon: 'error', dot: 'bg-nexus-red' },
@@ -17,10 +18,39 @@ const categoryLabels: Record<string, string> = {
   manual: 'Manual',
 };
 
-const healthStatusConfig = {
-  ok: { color: 'text-nexus-green', bg: 'bg-green-100 dark:bg-green-900/20', icon: 'check_circle', label: 'OK' },
-  error: { color: 'text-nexus-red', bg: 'bg-red-100 dark:bg-red-900/20', icon: 'cancel', label: 'ERROR' },
-  checking: { color: 'text-nexus-orange', bg: 'bg-orange-100 dark:bg-orange-900/20', icon: 'autorenew', label: 'VERIFICANDO' },
+const healthStatusConfig: Record<
+  'ok' | 'warning' | 'error' | 'checking',
+  {
+    color: string;
+    bg: string;
+    icon: string;
+    label: string;
+  }
+> = {
+  ok: {
+    color: 'text-nexus-green',
+    bg: 'bg-green-100 dark:bg-green-900/20',
+    icon: 'check_circle',
+    label: 'OK',
+  },
+  warning: {
+    color: 'text-yellow-500',
+    bg: 'bg-yellow-100 dark:bg-yellow-900/20',
+    icon: 'warning',
+    label: 'ALERTA',
+  },
+  error: {
+    color: 'text-nexus-red',
+    bg: 'bg-red-100 dark:bg-red-900/20',
+    icon: 'cancel',
+    label: 'ERROR',
+  },
+  checking: {
+    color: 'text-nexus-orange',
+    bg: 'bg-orange-100 dark:bg-orange-900/20',
+    icon: 'autorenew',
+    label: 'VERIFICANDO',
+  },
 };
 
 const AdminAudit: React.FC = () => {
@@ -28,15 +58,65 @@ const AdminAudit: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [healthChecks, setHealthChecks] = useState<HealthCheck[]>([]);
   const [isRunningHealth, setIsRunningHealth] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState({
+  activeStudents: 0,
+  pendingPayments: 0,
+  studentsWithoutCohort: 0,
+  totalNews: 0,
+});
   const [filterLevel, setFilterLevel] = useState<'all' | AuditLog['level']>('all');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
 
-  const loadLogs = useCallback(() => {
+  const loadLogs = useCallback(() => { 
     const all = auditService.getLogs().reverse(); // newest first
     setLogs(all);
   }, []);
+  const loadDashboardStats = useCallback(async () => {
+  try {
 
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('role,status,cohort,is_demo');
+
+    const { data: payments } = await supabase
+      .from('payments')
+      .select('status');
+
+    const { data: news } = await supabase
+      .from('news')
+      .select('id');
+
+    setDashboardStats({
+      activeStudents:
+        profiles?.filter(
+          p =>
+            p.role === 'student' &&
+            p.status === 'active' &&
+            !p.is_demo
+        ).length || 0,
+
+      pendingPayments:
+        payments?.filter(
+          p => p.status === 'pending'
+        ).length || 0,
+
+      studentsWithoutCohort:
+        profiles?.filter(
+          p =>
+            p.role === 'student' &&
+            !p.is_demo &&
+            (!p.cohort || p.cohort.trim() === '')
+        ).length || 0,
+
+      totalNews:
+        news?.length || 0,
+    });
+
+  } catch (err) {
+    console.error(err);
+  }
+}, []); 
   const runHealth = useCallback(async () => {
     setIsRunningHealth(true);
     setHealthChecks(prev => prev.map(h => ({ ...h, status: 'checking' as const })));
@@ -71,11 +151,11 @@ const AdminAudit: React.FC = () => {
   const filtered = filterLevel === 'all' ? logs : logs.filter(l => l.level === filterLevel);
 
   const counts = {
-    error: logs.filter(l => l.level === 'error').length,
-    warning: logs.filter(l => l.level === 'warning').length,
-    info: logs.filter(l => l.level === 'info').length,
-    success: logs.filter(l => l.level === 'success').length,
-  };
+  error: healthChecks.filter(h => h.status === 'error').length,
+  warning: healthChecks.filter(h => h.status === 'warning').length,
+  info: logs.filter(l => l.level === 'info').length,
+  success: healthChecks.filter(h => h.status === 'ok').length,
+};
 
   const handleClear = () => {
     if (confirm('¿Eliminar todos los registros de auditoría?')) {
@@ -117,23 +197,23 @@ const AdminAudit: React.FC = () => {
       <main className="p-4 space-y-5">
 
         {/* Summary Stats */}
-        <section className="grid grid-cols-4 gap-2">
-          {(['error', 'warning', 'info', 'success'] as const).map((level) => {
-            const cfg = levelConfig[level];
-            const labels = { error: 'Errores', warning: 'Alertas', info: 'Info', success: 'OK' };
-            return (
-              <button
-                key={level}
-                onClick={() => setFilterLevel(filterLevel === level ? 'all' : level)}
-                className={`rounded-2xl p-3 border text-center transition-all ${filterLevel === level ? `${cfg.bg} ${cfg.border}` : 'bg-white dark:bg-surface-dark border-gray-100 dark:border-white/5'}`}
-              >
-                <span className={`material-symbols-outlined text-xl ${cfg.color}`}>{cfg.icon}</span>
-                <p className={`text-xl font-black mt-1 ${cfg.color}`}>{counts[level]}</p>
-                <p className="text-[9px] font-black uppercase text-gray-400 tracking-wider">{labels[level]}</p>
-              </button>
-            );
-          })}
-        </section>
+          <section className="grid grid-cols-4 gap-2">
+            {(['error', 'warning', 'info', 'success'] as const).map((level) => {
+              const cfg = levelConfig[level];
+              const labels = { error: 'Errores', warning: 'Alertas', info: 'Info', success: 'OK' };
+              return (
+                <button
+                  key={level}
+                  onClick={() => setFilterLevel(filterLevel === level ? 'all' : level)}
+                  className={`rounded-2xl p-3 border text-center transition-all ${filterLevel === level ? `${cfg.bg} ${cfg.border}` : 'bg-white dark:bg-surface-dark border-gray-100 dark:border-white/5'}`}
+                >
+                  <span className={`material-symbols-outlined text-xl ${cfg.color}`}>{cfg.icon}</span>
+                  <p className={`text-xl font-black mt-1 ${cfg.color}`}>{counts[level]}</p>
+                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-wider">{labels[level]}</p>
+                </button>
+              );
+            })}
+          </section>
 
         {/* Health Checks */}
         <section className="bg-white dark:bg-surface-dark rounded-3xl border border-gray-100 dark:border-white/5 overflow-hidden shadow-sm">

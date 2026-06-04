@@ -1,4 +1,25 @@
 /// <reference types="vite/client" />
+export interface NexusAuditMetrics {
+  totalUsers: number;
+  activeStudents: number;
+  blockedUsers: number;
+  usersWithoutCohort: number;
+
+  totalRevenue: number;
+  pendingPayments: number;
+  overduePayments: number;
+
+  completedLessons: number;
+  averageScore: number;
+  inactiveStudents: number;
+
+  totalNews: number;
+  unreadNotifications: number;
+
+  healthScore: number;
+  alerts: string[];
+}
+
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL

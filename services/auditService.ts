@@ -1,4 +1,5 @@
 // auditService.ts
+import { supabase } from '../services/supabaseClient';
 // Captures runtime errors, network errors, and health checks for the Audit Panel.
 
 export interface AuditLog {
@@ -188,9 +189,120 @@ async function runHealthChecks(): Promise<HealthCheck[]> {
     detail: navigator.onLine ? 'En línea' : 'Sin conexión',
   });
 
-  return checks;
+  // 5. Usuarios sin cohorte
+try {
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, role, cohort, is_demo');
+
+  const missingCohort =
+  data?.filter(
+    p =>
+      p.role === 'student' &&
+      !p.is_demo &&
+      (!p.cohort || p.cohort.trim() === '')
+  ).length || 0;
+
+  checks.push({
+    name: 'Cohortes Estudiantiles',
+    status: missingCohort > 0 ? 'warning' : 'ok',
+    detail:
+      missingCohort > 0
+        ? `${missingCohort} estudiantes sin cohorte`
+        : 'Todos asignados'
+  });
+} catch {
+  checks.push({
+    name: 'Cohortes Estudiantiles',
+    status: 'error',
+    detail: 'No se pudo verificar'
+  });
 }
 
+  // 6. Pagos vencidos
+try {
+  const { data } = await supabase
+    .from('payments')
+    .select('status,due_date');
+
+  const pending =
+    data?.filter(
+      p => p.status === 'pending'
+    ).length || 0;
+
+  const overdue =
+    data?.filter(
+      p =>
+        p.status === 'pending' &&
+        new Date(p.due_date) < new Date()
+    ).length || 0;
+
+  checks.push({
+    name: 'Estado Financiero',
+    status: overdue > 0 ? 'warning' : 'ok',
+    detail: `${overdue} vencidos de ${pending} pendientes`
+  });
+
+} catch {
+  checks.push({
+    name: 'Estado Financiero',
+    status: 'error',
+    detail: 'No se pudo verificar'
+  });
+}
+  // 7. Usuarios bloqueados
+try {
+  const { data } = await supabase
+    .from('profiles')
+    .select('is_blocked');
+
+  const blocked =
+    data?.filter(
+      p => p.is_blocked === true
+    ).length || 0;
+
+  checks.push({
+    name: 'Acceso de Usuarios',
+    status: blocked > 0 ? 'warning' : 'ok',
+    detail:
+      blocked > 0
+        ? `${blocked} usuarios bloqueados`
+        : 'Acceso normal'
+  });
+} catch {
+  checks.push({
+    name: 'Acceso de Usuarios',
+    status: 'error',
+    detail: 'No se pudo verificar'
+  });
+}
+ // 8. Notificaciones
+try {
+  const { data } = await supabase
+    .from('notifications')
+    .select('is_read');
+
+  const unread =
+    data?.filter(
+      n => !n.is_read
+    ).length || 0;
+
+  checks.push({
+    name: 'Comunicaciones',
+    status: unread > 20 ? 'warning' : 'ok',
+    detail:
+      `${unread} notificaciones sin leer`
+  });
+} catch {
+  checks.push({
+    name: 'Comunicaciones',
+    status: 'error',
+    detail: 'No se pudo verificar'
+  });
+}
+  return checks;
+}
+  
 export const auditService = {
   init: initListeners,
   getLogs,
