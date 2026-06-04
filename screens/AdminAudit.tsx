@@ -63,18 +63,21 @@ const AdminAudit: React.FC = () => {
   pendingPayments: 0,
   studentsWithoutCohort: 0,
   totalNews: 0,
+  overduePayments: 0,
+  blockedUsers: 0,
+  totalUsers: 0,
 });
   const [filterLevel, setFilterLevel] = useState<'all' | AuditLog['level']>('all');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
 
-  const loadLogs = useCallback(() => { 
-    const all = auditService.getLogs().reverse(); // newest first
-    setLogs(all);
-  }, []);
-  const loadDashboardStats = useCallback(async () => {
-  try {
+ const loadLogs = useCallback(() => {
+  const all = auditService.getLogs().reverse();
+  setLogs(all);
+}, []);
 
+const loadDashboardStats = useCallback(async () => {
+  try {
     const { data: profiles } = await supabase
       .from('profiles')
       .select('role,status,cohort,is_demo');
@@ -111,26 +114,38 @@ const AdminAudit: React.FC = () => {
 
       totalNews:
         news?.length || 0,
+
+      overduePayments: 0,
+      blockedUsers: 0,
+      totalUsers: profiles?.length || 0,
     });
 
   } catch (err) {
     console.error(err);
   }
-}, []); 
+}, []);
+
   const runHealth = useCallback(async () => {
     setIsRunningHealth(true);
     setHealthChecks(prev => prev.map(h => ({ ...h, status: 'checking' as const })));
     try {
       const results = await auditService.runHealthChecks();
       setHealthChecks(results);
-      // Log the result
+
       const hasErrors = results.some(r => r.status === 'error');
+      const hasWarnings = results.some(r => r.status === 'warning');
+
       auditService.addLog({
-        level: hasErrors ? 'error' : 'success',
+        level: hasErrors ? 'error' : hasWarnings ? 'warning' : 'success',
         category: 'health',
-        title: hasErrors ? 'Health Check: fallos detectados' : 'Health Check: todos los sistemas OK',
+        title: hasErrors
+          ? 'Health Check: errores detectados'
+          : hasWarnings
+          ? 'Health Check: alertas detectadas'
+          : 'Health Check: todos los sistemas OK',
         detail: results.map(r => `${r.name}: ${r.status}`).join(' | '),
       });
+
       loadLogs();
     } finally {
       setIsRunningHealth(false);
@@ -139,8 +154,9 @@ const AdminAudit: React.FC = () => {
 
   useEffect(() => {
     loadLogs();
+    loadDashboardStats();
     runHealth();
-  }, []);
+  }, [loadLogs, loadDashboardStats, runHealth]);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -150,12 +166,12 @@ const AdminAudit: React.FC = () => {
 
   const filtered = filterLevel === 'all' ? logs : logs.filter(l => l.level === filterLevel);
 
- const counts = {
-  error: healthChecks.filter(h => h.status === 'error').length,
-  warning: healthChecks.filter(h => h.status === 'warning').length,
-  info: logs.filter(l => l.level === 'info').length,
-  success: healthChecks.filter(h => h.status === 'ok').length,
-};
+  const counts = {
+    error: healthChecks.filter(h => h.status === 'error').length,
+    warning: healthChecks.filter(h => h.status === 'warning').length,
+    info: logs.filter(l => l.level === 'info').length,
+    success: healthChecks.filter(h => h.status === 'ok').length,
+  };
 
   const handleClear = () => {
     if (confirm('¿Eliminar todos los registros de auditoría?')) {

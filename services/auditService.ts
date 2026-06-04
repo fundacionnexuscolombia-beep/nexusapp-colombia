@@ -1,5 +1,5 @@
 // auditService.ts
-import { supabase } from '../services/supabaseClient';
+import { supabase } from './supabaseClient';
 // Captures runtime errors, network errors, and health checks for the Audit Panel.
 
 export interface AuditLog {
