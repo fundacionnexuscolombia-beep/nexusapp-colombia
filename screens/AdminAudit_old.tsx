@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auditService, AuditLog, HealthCheck } from '../services/auditService';
 import { supabase } from '../services/supabaseClient';
-import AdminAuditStats from './AdminAuditStats.tsx';
 
 const levelConfig = {
   error: { color: 'text-nexus-red', bg: 'bg-red-50 dark:bg-red-900/10', border: 'border-red-200 dark:border-red-900/30', icon: 'error', dot: 'bg-nexus-red' },
@@ -60,23 +59,25 @@ const AdminAudit: React.FC = () => {
   const [healthChecks, setHealthChecks] = useState<HealthCheck[]>([]);
   const [isRunningHealth, setIsRunningHealth] = useState(false);
   const [dashboardStats, setDashboardStats] = useState({
-  totalUsers: 0,
   activeStudents: 0,
   pendingPayments: 0,
   studentsWithoutCohort: 0,
   totalNews: 0,
+  overduePayments: 0,
+  blockedUsers: 0,
+  totalUsers: 0,
 });
   const [filterLevel, setFilterLevel] = useState<'all' | AuditLog['level']>('all');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
 
-  const loadLogs = useCallback(() => { 
-    const all = auditService.getLogs().reverse(); // newest first
-    setLogs(all);
-  }, []);
-  const loadDashboardStats = useCallback(async () => {
-  try {
+ const loadLogs = useCallback(() => {
+  const all = auditService.getLogs().reverse();
+  setLogs(all);
+}, []);
 
+const loadDashboardStats = useCallback(async () => {
+  try {
     const { data: profiles } = await supabase
       .from('profiles')
       .select('role,status,cohort,is_demo');
@@ -90,81 +91,66 @@ const AdminAudit: React.FC = () => {
       .select('id');
 
     setDashboardStats({
-  totalUsers:
-    profiles?.filter(
-      p => !p.is_demo
-    ).length || 0,
+      activeStudents:
+        profiles?.filter(
+          p =>
+            p.role === 'student' &&
+            p.status === 'active' &&
+            !p.is_demo
+        ).length || 0,
 
-  activeStudents:
-    profiles?.filter(
-      p =>
-        p.role === 'student' &&
-        p.status === 'active' &&
-        !p.is_demo
-    ).length || 0,
+      pendingPayments:
+        payments?.filter(
+          p => p.status === 'pending'
+        ).length || 0,
 
-  pendingPayments:
-    payments?.filter(
-      p => p.status === 'pending'
-    ).length || 0,
+      studentsWithoutCohort:
+        profiles?.filter(
+          p =>
+            p.role === 'student' &&
+            !p.is_demo &&
+            (!p.cohort || p.cohort.trim() === '')
+        ).length || 0,
 
-  studentsWithoutCohort:
-    profiles?.filter(
-      p =>
-        p.role === 'student' &&
-        !p.is_demo &&
-        (!p.cohort || p.cohort.trim() === '')
-    ).length || 0,
+      totalNews:
+        news?.length || 0,
 
-  totalNews:
-    news?.length || 0,
-});
+      overduePayments: 0,
+      blockedUsers: 0,
+      totalUsers: profiles?.length || 0,
+    });
 
   } catch (err) {
     console.error(err);
   }
 }, []);
 
-const runHealth = useCallback(async () => {
-  setIsRunningHealth(true);
-  setHealthChecks(prev =>
-    prev.map(h => ({
-      ...h,
-      status: 'checking' as const
-    }))
-  );
+  const runHealth = useCallback(async () => {
+    setIsRunningHealth(true);
+    setHealthChecks(prev => prev.map(h => ({ ...h, status: 'checking' as const })));
+    try {
+      const results = await auditService.runHealthChecks();
+      setHealthChecks(results);
 
-  try {
-    const results = await auditService.runHealthChecks();
+      const hasErrors = results.some(r => r.status === 'error');
+      const hasWarnings = results.some(r => r.status === 'warning');
 
-    setHealthChecks(results);
+      auditService.addLog({
+        level: hasErrors ? 'error' : hasWarnings ? 'warning' : 'success',
+        category: 'health',
+        title: hasErrors
+          ? 'Health Check: errores detectados'
+          : hasWarnings
+          ? 'Health Check: alertas detectadas'
+          : 'Health Check: todos los sistemas OK',
+        detail: results.map(r => `${r.name}: ${r.status}`).join(' | '),
+      });
 
-    const hasErrors = results.some(r => r.status === 'error');
-    const hasWarnings = results.some(r => r.status === 'warning');
-
-    auditService.addLog({
-      level: hasErrors
-        ? 'error'
-        : hasWarnings
-        ? 'warning'
-        : 'success',
-      category: 'health',
-      title: hasErrors
-        ? 'Health Check: errores detectados'
-        : hasWarnings
-        ? 'Health Check: alertas detectadas'
-        : 'Health Check: todos los sistemas OK',
-      detail: results
-        .map(r => `${r.name}: ${r.status}`)
-        .join(' | ')
-    });
-
-    loadLogs();
-
-  } finally {
-    setIsRunningHealth(false);
-  }
-}, [loadLogs]);
+      loadLogs();
+    } finally {
+      setIsRunningHealth(false);
+    }
+  }, [loadLogs]);
 
   useEffect(() => {
     loadLogs();
@@ -173,14 +159,10 @@ const runHealth = useCallback(async () => {
   }, [loadLogs, loadDashboardStats, runHealth]);
 
   useEffect(() => {
-  if (!autoRefresh) return;
-
-  const interval = setInterval(() => {
-    loadLogs();
-  }, 5000);
-
-  return () => clearInterval(interval);
-}, [autoRefresh, loadLogs]);
+    if (!autoRefresh) return;
+    const interval = setInterval(loadLogs, 5000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, loadLogs]);
 
   const filtered = filterLevel === 'all' ? logs : logs.filter(l => l.level === filterLevel);
 
@@ -230,69 +212,108 @@ const runHealth = useCallback(async () => {
 
       <main className="p-4 space-y-5">
 
-        {/* Summary Stats */}
-          <section className="grid grid-cols-4 gap-2">
-            {(['error', 'warning', 'info', 'success'] as const).map((level) => {
-              const cfg = levelConfig[level];
-              const labels = { error: 'Errores', warning: 'Alertas', info: 'Info', success: 'OK' };
-              return (
-                <button
-                  key={level}
-                  onClick={() => setFilterLevel(filterLevel === level ? 'all' : level)}
-                  className={`rounded-2xl p-3 border text-center transition-all ${filterLevel === level ? `${cfg.bg} ${cfg.border}` : 'bg-white dark:bg-surface-dark border-gray-100 dark:border-white/5'}`}
-                >
-                  <span className={`material-symbols-outlined text-xl ${cfg.color}`}>{cfg.icon}</span>
-                  <p className={`text-xl font-black mt-1 ${cfg.color}`}>{counts[level]}</p>
-                  <p className="text-[9px] font-black uppercase text-gray-400 tracking-wider">{labels[level]}</p>
-                </button>
-              );
-            })}
-          </section>
+        {/* Dashboard Stats */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
 
-        <AdminAuditStats dashboardStats={dashboardStats} />
+          <div className="rounded-2xl p-4 bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 text-center">
+            <span className="material-symbols-outlined text-primary text-2xl">
+              groups
+            </span>
+            <p className="text-2xl font-black mt-2 dark:text-white">
+              {dashboardStats.totalUsers}
+            </p>
+            <p className="text-[10px] uppercase font-black text-gray-400">
+              Usuarios
+            </p>
+          </div>
+
+          <div className="rounded-2xl p-4 bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 text-center">
+            <span className="material-symbols-outlined text-green-500 text-2xl">
+              school
+            </span>
+            <p className="text-2xl font-black mt-2 dark:text-white">
+              {dashboardStats.activeStudents}
+            </p>
+            <p className="text-[10px] uppercase font-black text-gray-400">
+              Estudiantes Activos
+            </p>
+          </div>
+
+          <div className="rounded-2xl p-4 bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 text-center">
+            <span className="material-symbols-outlined text-amber-500 text-2xl">
+              payments
+            </span>
+            <p className="text-2xl font-black mt-2 dark:text-white">
+              {dashboardStats.pendingPayments}
+            </p>
+            <p className="text-[10px] uppercase font-black text-gray-400">
+              Pagos Pendientes
+            </p>
+          </div>
+
+          <div className="rounded-2xl p-4 bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 text-center">
+            <span className="material-symbols-outlined text-blue-500 text-2xl">
+              article
+            </span>
+            <p className="text-2xl font-black mt-2 dark:text-white">
+              {dashboardStats.totalNews}
+            </p>
+            <p className="text-[10px] uppercase font-black text-gray-400">
+              Noticias
+            </p>
+          </div>
+
+        </section>
 
         {/* Health Checks */}
         <section className="bg-white dark:bg-surface-dark rounded-3xl border border-gray-100 dark:border-white/5 overflow-hidden shadow-sm">
+
           <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-white/5">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-lg">monitor_heart</span>
-              <h2 className="font-black text-sm dark:text-white uppercase tracking-wider">Estado del Sistema</h2>
+              <span className="material-symbols-outlined text-primary text-lg">
+                monitor_heart
+              </span>
+              <h2 className="font-black text-sm dark:text-white uppercase tracking-wider">
+                Estado del Sistema
+              </h2>
             </div>
+
             <button
               onClick={runHealth}
               disabled={isRunningHealth}
-              className="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-nexus-purple transition-colors disabled:opacity-50 flex items-center gap-1"
+              className="px-4 py-2 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-wider"
             >
-              <span className={`material-symbols-outlined text-sm ${isRunningHealth ? 'animate-spin' : ''}`}>
-                {isRunningHealth ? 'autorenew' : 'play_arrow'}
-              </span>
               {isRunningHealth ? 'Verificando...' : 'Verificar'}
             </button>
           </div>
+
           <div className="divide-y divide-gray-100 dark:divide-white/5">
-            {healthChecks.length === 0 && (
-              <div className="p-6 text-center text-gray-400 text-xs">Ejecutando verificación...</div>
-            )}
-            {healthChecks.map((check, i) => {
-              const cfg = healthStatusConfig[check.status];
-              return (
-                <div key={i} className="flex items-center justify-between p-4">
-                  <div>
-                    <p className="font-bold text-sm dark:text-white">{check.name}</p>
-                    <p className="text-[10px] text-gray-400">{check.detail}</p>
-                  </div>
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${cfg.bg}`}>
-                    <span className={`material-symbols-outlined text-sm ${cfg.color} ${check.status === 'checking' ? 'animate-spin' : ''}`}>{cfg.icon}</span>
-                    <span className={`text-[10px] font-black ${cfg.color}`}>
-                      {check.latencyMs ? `${check.latencyMs}ms` : cfg.label}
-                    </span>
-                  </div>
+            {healthChecks.map((check) => (
+              <div
+                key={check.name}
+                className="flex items-center justify-between p-4"
+              >
+                <div>
+                  <h3 className="font-bold dark:text-white">
+                    {check.name}
+                  </h3>
+
+                  <p className="text-xs text-gray-400">
+                    {check.detail}
+                  </p>
                 </div>
-              );
-            })}
+
+                <div>
+                  {check.status}
+                </div>
+              </div>
+            ))}
           </div>
+
         </section>
 
+        {/* Logs */}
+        <section className="bg-white dark:bg-surface-dark rounded-3xl border border-gray-100 dark:border-white/5 overflow-hidden shadow-sm">
         {/* Logs */}
         <section className="bg-white dark:bg-surface-dark rounded-3xl border border-gray-100 dark:border-white/5 overflow-hidden shadow-sm">
           <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-white/5">
