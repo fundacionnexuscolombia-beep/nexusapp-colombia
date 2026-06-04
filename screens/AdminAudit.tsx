@@ -150,7 +150,7 @@ const AdminAudit: React.FC = () => {
 
   const filtered = filterLevel === 'all' ? logs : logs.filter(l => l.level === filterLevel);
 
-  const counts = {
+ const counts = {
   error: healthChecks.filter(h => h.status === 'error').length,
   warning: healthChecks.filter(h => h.status === 'warning').length,
   info: logs.filter(l => l.level === 'info').length,
